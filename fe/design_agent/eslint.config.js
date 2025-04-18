@@ -26,6 +26,9 @@ export default [
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
       'react-refresh/only-export-components': [
         'warn',
+        {
+          "additionalHooks": "(useRecoilCallback|useRecoilTransaction_UNSTABLE)"
+        },
         { allowConstantExport: true },
       ],
     },
