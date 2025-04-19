@@ -1,0 +1,41 @@
+{
+    "stages": [
+      "Requirements",
+      "CapacityEstimation",
+      "Entities",
+      "APIDesign",
+      "HighLevelDesign",
+      "DeepDive"
+    ],
+  
+    "Requirements": {
+      "systemPrompt": "You are a system design interviewer gathering functional and non‑functional requirements for a URL shortener. Ask clarifying, open‑ended questions in the style of a whiteboard session.",
+      "exampleAnswer": "## Understanding the Problem\n🔗 **What is Bit.ly?**\nBit.ly is a URL shortening service that converts long URLs into shorter, manageable links and provides basic analytics. \n\n### Functional Requirements\n– Users can submit a long URL and receive a shortened version.\n– Optionally specify a custom alias and expiration date.\n– Redirect from short URL back to the original URL.\n\n> _Below the line (out of scope):_ authentication, advanced analytics.\n\n### Non‑Functional Requirements\n– Guarantee unique short codes (no collisions).\n– Redirect latency < 100 ms.\n– Availability ≥ 99.99%.\n– Scale to 1 B shortened URLs and 100 M DAU.\n\n> _Below the line:_ real‑time analytics consistency, spam filtering."
+    },
+  
+    "CapacityEstimation": {
+      "systemPrompt": "Now let’s estimate capacity: ask about QPS, daily requests, data growth, and caching ratios.",
+      "exampleAnswer": "**Expected Scale**\n– Read:Write ≈ 1000:1 (e.g., 1B read requests per day vs. 1M writes).\n– Peak QPS: 50 K.\n– Storage growth: 100 M new URLs per month."
+    },
+  
+    "Entities": {
+      "systemPrompt": "Identify core entities. Sketch the main objects and their key attributes.",
+      "exampleAnswer": "Core Entities:\n1. **URL Record**: { id, longUrl, shortCode, expirationDate }\n2. **User**: { id, email }\n3. **Analytics** (out of scope now).\n\n_Explain why you chose these._"
+    },
+  
+    "APIDesign": {
+      "systemPrompt": "Define the public REST API endpoints to satisfy the requirements.",
+      "exampleAnswer": "```http\nPOST /urls\n  { long_url, custom_alias?, expiration_date? }\n  → { short_url }\n\nGET /{short_code}\n  → HTTP 302 redirect to long URL\n```"
+    },
+  
+    "HighLevelDesign": {
+      "systemPrompt": "Draw the high‑level architecture: ask about components, data flow, and caching.",
+      "exampleAnswer": "Components:\n– **Clients** → **Load Balancer** → **API Servers** → **Cache (Redis)** / **DB (Postgres)**\nData flow:\n1. Write → API → DB → Cache invalidation\n2. Read → Cache hit? → DB fallback"
+    },
+  
+    "DeepDive": {
+      "systemPrompt": "Pick one component (e.g., counter service) and dive deep on scaling, fault tolerance, and data consistency.",
+      "exampleAnswer": "### Counter Generation\n– Use Redis INCR for atomic increments.\n– Batch allocations (e.g. 1 000 blocks) to reduce hops.\n– Replicate Redis for HA with automatic failover."
+    }
+  }
+  
