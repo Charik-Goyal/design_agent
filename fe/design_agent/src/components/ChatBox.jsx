@@ -1,120 +1,143 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { graph } from "../atoms/graph";
+import { processData } from "../utility/graph";
+import StageSelector from "./Stage";
+import { Loader2, User, Cpu } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function ChatBox() {
+  const [messages, setMessages] = useState([
+    { sender: "bot", text: "Hello! How can I help you today?" }
+  ]);
   const [input, setInput] = useState("");
-  const [response, setResponse] = useState("");
-  const elements = useRecoilValue(graph)
+  const [stage, setStage] = useState("Requirements");
+  const [dotCount, setDotCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const elements = useRecoilValue(graph);
+  const messagesEndRef = useRef(null);
+
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Loading indicator dots
+  useEffect(() => {
+    let id;
+    if (loading) {
+      setDotCount(1);
+      id = setInterval(() => {
+        setDotCount((c) => (c % 3) + 1);
+      }, 500);
+    } else {
+      setDotCount(0);
+    }
+    return () => clearInterval(id);
+  }, [loading]);
 
   const sendMessage = async () => {
-    if (!input.trim() && !elements) return;
-    let data = {
-      "msg": input,
-      "graph": processData()
-    }
-    console.log(JSON.stringify(data))
+    const text = input.trim();
+    if (!text) return;
+
+    // Add user message
+    setMessages((prev) => [...prev, { sender: "user", text }]);
+    setInput("");
+    setLoading(true);
+
     try {
-      const res = await fetch("http://localhost:8000/ask", {
+      const payload = { msg: text, graph: processData(elements), stage };
+      const res = await fetch("http://localhost:8000/interview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
+      const { reply, nextStage } = await res.json();
+      setStage(nextStage);
 
-      const data = await res.json();
-      setResponse(data.answer || "No response from AI agent");
-    } catch (error) {
-      console.error("Chat error:", error);
-      setResponse("Error communicating with AI agent");
+      // Add bot response
+      setMessages((prev) => [...prev, { sender: "bot", text: reply }]);
+    } catch {
+      setMessages((prev) => [...prev, { sender: "bot", text: "Error communicating with AI agent." }]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const processData = () => {
-    let val = {};
-    let rectangles = [];
-
-    for (let t = 0; t < elements.length; t++) {
-      let x = elements[t];
-
-      if (x.type === "text") {
-        if (x.containerId !== null && val[x.containerId]) {
-          val[x.containerId].val = x.text;
-        }
-        continue;
-      }
-
-      val[x.id] = {
-        type: x.type,
-        val: "",
-        ngr: [],
-        position: { x: x.x, y: x.y, width: x.width, height: x.height }
-      };
-
-      if (x.type !== "arrow" && x.type !== "text" && x.type !== "line" && x.type !== "freedraw") {
-        rectangles.push(x.id);
-      }
-
-      if (x.type === "arrow" && x.startBinding && x.endBinding) {
-        val[x.id] = {
-          ...val[x.id],
-          start: x.startBinding.elementId,
-          end: x.endBinding.elementId
-        };
-      }
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
-
-    for (let x in val) {
-      if (val[x].type === "arrow") {
-        let p = val[x].start;
-        let q = val[x].end;
-        if (val[p]) val[p].ngr.push(q);
-      }
-    }
-
-    const isInside = (inner, outer) => {
-      return (
-        inner.x >= outer.x &&
-        inner.y >= outer.y &&
-        inner.x + inner.width <= outer.x + outer.width &&
-        inner.y + inner.height <= outer.y + outer.height
-      );
-    };
-
-    rectangles.forEach(outerId => {
-      rectangles.forEach(innerId => {
-        if (innerId !== outerId) {
-          let innerRect = val[innerId].position;
-          let outerRect = val[outerId].position;
-
-          if (isInside(innerRect, outerRect)) {
-            val[outerId].ngr.push(innerId);
-          }
-        }
-      });
-    });
-    console.log(val)
-    return val;
   };
 
   return (
-    <div className="flex flex-col h-full space-y-2">
-      <textarea
-        className="w-9 h-full p-6 border rounded m-2 text-sm"
-        rows={4}
-        placeholder="Ask a system design question..."
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-      />
-      <button
-        onClick={sendMessage}
-        className="w-full px-4 py-2 bg-green-600 text-white rounded shadow mb-4"
-      >
-        Ask
-      </button>
-      <div className="bg-white p-3 rounded shadow text-sm overflow-auto h-full">
-        <h4 className="font-semibold mb-2">AI Agent Response:</h4>
-        <p>{response}</p>
+    <div className="flex flex-col h-full min-h-0">
+      <StageSelector stage={stage} onChange={setStage} />
+  
+      {/* Chat window explicitly scrollable */}
+      <div className="flex-1 min-h-0 overflow-auto relative bg-white rounded-lg shadow-inner p-4 space-y-4">
+        {messages.map((msg, idx) => {
+          const isUser = msg.sender === "user";
+          const Icon = isUser ? User : Cpu;
+          const bubbleClasses = isUser
+            ? "bg-blue-500 text-white"
+            : "bg-gray-200 text-gray-800";
+          const label = isUser ? "You" : "AI";
+  
+          return (
+            <div
+              key={idx}
+              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+            >
+              <div className="flex items-start space-x-2 max-w-md">
+                {!isUser && <Icon className="w-6 h-6 text-gray-500" />}
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">{label}</div>
+                  <div className={`px-4 py-2 rounded-lg whitespace-pre-wrap shadow ${bubbleClasses}`}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-slate prose-sm text-inherit">
+                      {msg.text}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+                {isUser && <Icon className="w-6 h-6 text-blue-500" />}
+              </div>
+            </div>
+          );
+        })}
+  
+        {/* Spinner Overlay */}
+        {loading && (
+          <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center rounded-lg z-10">
+            <Loader2 className="animate-spin mr-2 text-gray-600" />
+            <span className="text-gray-600">AI is thinking{".".repeat(dotCount)}</span>
+          </div>
+        )}
+  
+        <div ref={messagesEndRef} />
+      </div>
+  
+      {/* Input area */}
+      <div className="flex-none flex items-center space-x-2 mt-2">
+        <textarea
+          className="flex-1 p-3 border border-gray-300 rounded-lg text-sm resize focus:outline-none focus:ring focus:border-blue-300"
+          rows={2}
+          placeholder="Type a message..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={loading}
+          className={`px-4 py-2 rounded-lg text-white font-semibold shadow-lg transition-colors duration-200
+            ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"}`}
+        >
+          Send
+        </button>
       </div>
     </div>
-  );
+  );  
 }

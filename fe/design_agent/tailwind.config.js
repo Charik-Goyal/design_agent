@@ -8,4 +8,8 @@ export default {
     extend: {},
   },
   plugins: [],
+  corePlugins: {
+    // make sure this isn’t set to false!
+    animation: true,
+  },
 }
