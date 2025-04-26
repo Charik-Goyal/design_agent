@@ -56,7 +56,7 @@ export default function ChatBox() {
     } catch {
       setMessages((prev) => [...prev, { sender: "bot", text: "Error communicating with AI agent." }]);
     } finally {
-      setLoading(False);
+      setLoading(false);
     }
   };
 
