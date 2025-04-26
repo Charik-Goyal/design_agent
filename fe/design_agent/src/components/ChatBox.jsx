@@ -3,7 +3,7 @@ import { useRecoilValue } from "recoil";
 import { graph } from "../atoms/graph";
 import { processData } from "../utility/graph";
 import StageSelector from "./Stage";
-import { Loader2, User, Cpu } from "lucide-react";
+import { User, Bot } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -18,19 +18,15 @@ export default function ChatBox() {
   const elements = useRecoilValue(graph);
   const messagesEndRef = useRef(null);
 
-  // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Loading indicator dots
   useEffect(() => {
     let id;
     if (loading) {
       setDotCount(1);
-      id = setInterval(() => {
-        setDotCount((c) => (c % 3) + 1);
-      }, 500);
+      id = setInterval(() => setDotCount((c) => (c % 3) + 1), 500);
     } else {
       setDotCount(0);
     }
@@ -41,7 +37,6 @@ export default function ChatBox() {
     const text = input.trim();
     if (!text) return;
 
-    // Add user message
     setMessages((prev) => [...prev, { sender: "user", text }]);
     setInput("");
     setLoading(true);
@@ -61,7 +56,7 @@ export default function ChatBox() {
     } catch {
       setMessages((prev) => [...prev, { sender: "bot", text: "Error communicating with AI agent." }]);
     } finally {
-      setLoading(false);
+      setLoading(False);
     }
   };
 
@@ -75,53 +70,50 @@ export default function ChatBox() {
   return (
     <div className="flex flex-col h-full min-h-0">
       <StageSelector stage={stage} onChange={setStage} />
-  
-      {/* Chat window explicitly scrollable */}
-      <div className="flex-1 min-h-0 overflow-auto relative bg-white rounded-lg shadow-inner p-4 space-y-4">
-        {messages.map((msg, idx) => {
+
+      {/* Chat window */}
+      <div className="flex-1 min-h-0 overflow-auto relative bg-white rounded-lg shadow-inner p-4 space-y-4 text-sm leading-snug">
+      {messages.map((msg, idx) => {
           const isUser = msg.sender === "user";
-          const Icon = isUser ? User : Cpu;
-          const bubbleClasses = isUser
-            ? "bg-blue-500 text-white"
-            : "bg-gray-200 text-gray-800";
-          const label = isUser ? "You" : "AI";
-  
+          // const time = formatTime(msg.timestamp);
           return (
-            <div
-              key={idx}
-              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-            >
-              <div className="flex items-start space-x-2 max-w-md">
-                {!isUser && <Icon className="w-6 h-6 text-gray-500" />}
-                <div>
-                  <div className="text-xs text-gray-500 mb-1">{label}</div>
-                  <div className={`px-4 py-2 rounded-lg whitespace-pre-wrap shadow ${bubbleClasses}`}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-slate prose-sm text-inherit">
-                      {msg.text}
-                    </ReactMarkdown>
-                  </div>
+            <div key={idx} className={`chat ${isUser ? "chat-end" : "chat-start"}`}>               
+              <div className="chat-image avatar">
+                <div className="w-10 rounded-full">
+                  {isUser ? <User className="w-full h-full text-blue-500" /> : <Bot className="w-full h-full text-black" />}
                 </div>
-                {isUser && <Icon className="w-6 h-6 text-blue-500" />}
+              </div>
+              <div className="chat-header">
+                {isUser ? "You" : "AI"}
+              </div>
+              <div className={`chat-bubble ${isUser ? "bg-blue-500" : "bg-gray-500"}`}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
               </div>
             </div>
           );
         })}
-  
-        {/* Spinner Overlay */}
+
         {loading && (
-          <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center rounded-lg z-10">
-            <Loader2 className="animate-spin mr-2 text-gray-600" />
-            <span className="text-gray-600">AI is thinking{".".repeat(dotCount)}</span>
+          <div className="chat chat-start">
+            <div className="chat-image avatar">
+                <div className="w-10 rounded-full">
+                  <Bot className="w-full h-full text-black" />
+                </div>
+            </div>
+            <div className="chat-bubble bg-gray-500">
+              <span className="loading loading-dots loading-lg"></span>
+            </div>
           </div>
+          
         )}
-  
+
         <div ref={messagesEndRef} />
       </div>
-  
-      {/* Input area */}
+
+      {/* Input */}
       <div className="flex-none flex items-center space-x-2 mt-2">
         <textarea
-          className="flex-1 p-3 border border-gray-300 rounded-lg text-sm resize focus:outline-none focus:ring focus:border-blue-300"
+          className="textarea flex-1 p-3 rounded-lg text-sm text-black bg-white"
           rows={2}
           placeholder="Type a message..."
           value={input}
@@ -129,15 +121,15 @@ export default function ChatBox() {
           onKeyDown={handleKeyDown}
           disabled={loading}
         />
+
         <button
           onClick={sendMessage}
           disabled={loading}
-          className={`px-4 py-2 rounded-lg text-white font-semibold shadow-lg transition-colors duration-200
-            ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"}`}
+          className={`px-4 py-2 rounded-lg text-white font-semibold shadow-lg transition-colors duration-200 ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"}`}
         >
           Send
         </button>
       </div>
     </div>
-  );  
+  );
 }

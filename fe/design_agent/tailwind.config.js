@@ -1,15 +1,20 @@
+// @ts-ignore: DaisyUI has no TypeScript definitions
+const daisyui = require('daisyui');
+
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    './index.html',
+    './src/**/*.{js,jsx,ts,tsx}'
   ],
   theme: {
     extend: {},
   },
-  plugins: [],
-  corePlugins: {
-    // make sure this isn’t set to false!
-    animation: true,
+  plugins: [
+    daisyui
+  ],
+  daisyui: {
+    themes: ["light", "dark"],   // light first
+    defaultTheme: "light",       // ensure “light” is the default
   },
-}
+};

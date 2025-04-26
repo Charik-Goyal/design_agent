@@ -38,7 +38,7 @@ function App() {
       >
         {/* Left: Excalidraw area */}
         <div
-          className="flex-none h-full overflow-hidden bg-white border-r border-gray-200 p-2"
+          className="flex-none h-full overflow-hidden bg-white border-r border-gray-200"
           style={{ width: `${panelWidth}%` }}
         >
           <ExcalidrawCanvas />
@@ -46,7 +46,7 @@ function App() {
 
         {/* Draggable divider – self‑closing, no extra content */}
         <div
-          className={`flex-none h-full bg-gray-300 hover:bg-gray-400 active:bg-gray-500 ${
+          className={`flex-none h-full bg-gray-200 hover:bg-gray-400 active:bg-gray-500 ${
             isResizing ? "cursor-grabbing" : "cursor-col-resize"
           }`}
           style={{ width: "2px" }}
@@ -54,8 +54,8 @@ function App() {
         />
 
         {/* Right: Chat panel */}
-        <div className="flex-auto flex flex-col h-full overflow-hidden bg-gray-100 p-4">
-          <h2 className="text-xl font-bold mb-4 flex-none">System Design Agent</h2>
+        <div className="flex-auto flex flex-col h-full overflow-hidden bg-gray-200 p-4">
+          <h2 className="text-xl font-bold mb-4 flex-none text-black">System Design Agent</h2>
           <div className="flex-1 h-full min-h-0 overflow-hidden">
             <ChatBox />
           </div>
