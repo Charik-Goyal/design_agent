@@ -1,10 +1,8 @@
 const STAGES = [
-  "Requirements",
-  "CapacityEstimation",
-  "Entities",
-  "APIDesign",
-  "HighLevelDesign",
-  "DeepDive",
+  "Understanding the Problem",
+  "The Set Up",
+  "High-Level Design",
+  "Potential Deep Dives",
 ];
 
 export default function StageSelector({ stage, onChange }) {
