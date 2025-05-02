@@ -8,8 +8,16 @@ export const processData = (elements) => {
       if (x.type === "text") {
         if (x.containerId !== null && val[x.containerId]) {
           val[x.containerId].val = x.text;
+        } else {
+          if (x.text.length > 0) {
+            val[x.id] = {
+              type: "FreeText",
+              val: x.text,
+              position: { x: x.x, y: x.y, width: x.width, height: x.height }
+            }
+          }
+          continue;
         }
-        continue;
       }
 
       val[x.id] = {
