@@ -1,16 +1,22 @@
-import "@excalidraw/excalidraw/index.css";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { RecoilRoot } from "recoil";
-import ChatBox from "./components/ChatBox";
 import ExcalidrawCanvas from "./components/ExcalidrawCanvas";
+import ChatBox from "./components/ChatBox";
+import ProblemSelector from "./components/ProblemSelector";
 
 function App() {
-  const [panelWidth, setPanelWidth] = useState(65); // % of screen for Excalidraw
-  const [isResizing, setIsResizing] = useState(false);
+  const [panelWidth, setPanelWidth]   = useState(60);
+  const [isResizing, setIsResizing]   = useState(false);
+  const [started, setStarted]         = useState(false);
+  const [initialReply, setInitialReply]   = useState("");
+  const [initialStage, setInitialStage]   = useState("");
 
-  // Stop resizing when mouse released or leaves window
+  // global mouseup/leave to stop resizing
   useEffect(() => {
-    const stop = () => setIsResizing(false);
+    const stop = () => {
+      setIsResizing(false);
+      document.body.style.userSelect = "";
+    };
     window.addEventListener("mouseup", stop);
     window.addEventListener("mouseleave", stop);
     return () => {
@@ -22,12 +28,19 @@ function App() {
   const startResize = (e) => {
     e.preventDefault();
     setIsResizing(true);
+    document.body.style.userSelect = "none";
   };
 
   const handleMouseMove = (e) => {
     if (!isResizing) return;
-    const newWidth = (e.clientX / window.innerWidth) * 100; // percentage
-    if (newWidth > 20 && newWidth < 90) setPanelWidth(newWidth);
+    const pct = (e.clientX / window.innerWidth) * 100;
+    if (pct > 20 && pct < 90) setPanelWidth(pct);
+  };
+
+  const handleStart = ({ reply, nextStage }) => {
+    setInitialReply(reply);
+    setInitialStage(nextStage);
+    setStarted(true);
   };
 
   return (
@@ -36,29 +49,41 @@ function App() {
         className="flex h-screen overflow-hidden"
         onMouseMove={handleMouseMove}
       >
-        {/* Left: Excalidraw area */}
+        {/* Left pane */}
         <div
-          className="flex-none h-full overflow-hidden bg-white border-r border-gray-200"
+          className="flex-none h-full overflow-hidden bg-white border-r"
           style={{ width: `${panelWidth}%` }}
         >
           <ExcalidrawCanvas />
         </div>
 
-        {/* Draggable divider – self‑closing, no extra content */}
+        {/* Divider */}
         <div
-          className={`flex-none h-full bg-gray-200 hover:bg-gray-400 active:bg-gray-500 ${
+          onMouseDown={startResize}
+          className={`flex-none h-full bg-gray-200 hover:bg-gray-400 ${
             isResizing ? "cursor-grabbing" : "cursor-col-resize"
           }`}
           style={{ width: "2px" }}
-          onMouseDown={startResize}
         />
 
-        {/* Right: Chat panel */}
-        <div className="flex-auto flex flex-col h-full overflow-hidden bg-gray-200 p-4">
-          <h2 className="text-xl font-bold mb-4 flex-none text-black">System Design Agent</h2>
-          <div className="flex-1 h-full min-h-0 overflow-hidden">
-            <ChatBox />
-          </div>
+        {/* Right pane */}
+        <div className="flex-auto flex flex-col h-full bg-gray-100">
+          {started ? (
+            <>
+              <div className="p-4 border-b">
+                <h2 className="text-xl font-bold text-black">System Design Agent</h2>
+              </div>
+              <div className="flex-1 min-h-0 p-4 overflow-hidden">
+                <ChatBox
+                  initialReply={initialReply}
+                  initialStage={initialStage}
+                  userId="test"
+                />
+              </div>
+            </>
+          ) : (
+            <ProblemSelector onStart={handleStart} />
+          )}
         </div>
       </div>
     </RecoilRoot>
@@ -66,6 +91,3 @@ function App() {
 }
 
 export default App;
-
-
-
