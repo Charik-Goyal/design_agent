@@ -1,0 +1,1723 @@
+{
+  "Understanding the Problem": {
+    "content": [
+      "📹 What are Facebook Live Comments?Facebook Live Comments is a feature that enables viewers to post comments on a live video feed. Viewers can see a continuous stream of comments in near-real-time."
+    ],
+    "subsections": {
+      "Functional Requirements": {
+        "content": [
+          "Core Requirements",
+          "Viewers can post comments on a Live video feed.",
+          "Viewers can see new comments being posted while they are watching the live video.",
+          "Viewers can see comments made before they joined the live feed.",
+          "Below the line (out of scope):",
+          "Viewers can reply to comments",
+          "Viewers can react to comments"
+        ]
+      },
+      "Non-Functional Requirements": {
+        "content": [
+          "Core Requirements",
+          "The system should scale to support millions of concurrent videos and thousands of comments per second per live video.",
+          "The system should prioritize availability over consistency, eventual consistency is fine.",
+          "The system should have low latency, broadcasting comments to viewers in near-real time (< 200ms end-to-end latency under typical network conditions)",
+          "Below the line (out of scope):",
+          "The system should be secure, ensuring that only authorized users can post comments.",
+          "The system should enforce integrity constraints, ensuring that comments are appropriate (ie. not spam, hate speech, etc.)",
+          "🤩 Fun Fact!Humans generally perceive interactions as real-time if they occur within 200 milliseconds. Any delay shorter than 200 milliseconds in a user interface is typically perceived as instantaneous so when developing real-time systems, this is the target latency to aim for.",
+          "🤩 Fun Fact!The most popular Facebook Live video was called Chewbacca Mom which features a mom thoroughly enjoying a plastic, roaring Chewbacca mask. It has been viewed over 180 million times. Check it outhere.",
+          "Here's how your requirements section might look on your whiteboard:",
+          "FB Live Comments Requirements"
+        ],
+        "figures": [
+          {
+            "src": {
+              "nodes": [
+                {
+                  "id": "functional_requirements",
+                  "label": "Functional Requirements"
+                },
+                {
+                  "id": "1_viewers_can_post_comments",
+                  "label": "1. Viewers can post comments"
+                },
+                {
+                  "id": "2_viewers_can_see_all_comments_posted_in_near_realtime",
+                  "label": "2. Viewers can see all comments posted in near realtime"
+                },
+                {
+                  "id": "3_viewers_can_see_all_comments_posted_before_they_joined_",
+                  "label": "3. Viewers can see all comments posted before they joined."
+                },
+                {
+                  "id": "_below_the_line_",
+                  "label": "---------------- Below the line -----------------"
+                },
+                {
+                  "id": "_viewers_can_reply_to_comments",
+                  "label": "- Viewers can reply to comments"
+                },
+                {
+                  "id": "_viewers_can_react_to_comments",
+                  "label": "- Viewers can react to comments"
+                },
+                {
+                  "id": "non_functional_requirements",
+                  "label": "Non-functional Requirements"
+                },
+                {
+                  "id": "1_scale_to_millions_of_viewers_per_video",
+                  "label": "1. Scale to millions of viewers per video"
+                },
+                {
+                  "id": "2_availability_consistency",
+                  "label": "2. Availability > consistency"
+                },
+                {
+                  "id": "3_low_latency_comment_broadcast_200ms_",
+                  "label": "3. Low latency comment broadcast (~200ms)"
+                },
+                {
+                  "id": "_below_the_line_",
+                  "label": "---------------- Below the line -----------------"
+                },
+                {
+                  "id": "_security",
+                  "label": "- Security"
+                },
+                {
+                  "id": "_integrity",
+                  "label": "- Integrity"
+                }
+              ],
+              "edges": []
+            },
+            "caption": "FB Live Comments Requirements"
+          }
+        ]
+      }
+    }
+  },
+  "The Set Up": {
+    "content": [],
+    "subsections": {
+      "Planning the Approach": {
+        "content": [
+          "Before you move on to designing the system, it's important to start by taking a moment to plan your strategy. Fortunately, for these common product style system design questions, the plan should be straightforward: build your design up sequentially, going one by one through your functional requirements. This will help you stay focused and ensure you don't get lost in the weeds as you go. Once you've satisfied the functional requirements, you'll rely on your non-functional requirements to guide you through layering on depth and complexity to your design."
+        ]
+      },
+      "Defining the Core Entities": {
+        "content": [
+          "I like to begin with a broad overview of the primary entities. Initially, establishing these key entities will guide our thought process and lay a solid foundation as we progress towards defining the API. Think of these as the \"nouns\" of the system.",
+          "Why just the entities and not the whole data model at this point? The reality is we're too early in the design and likely can't accurately enumerate all the columns/fields yet. Instead, we start by grasping the core entities and then build up the data model as we progress with the design.",
+          "For this particular problem, we only have three core entities:",
+          "User: A user can be a viewer or a broadcaster.",
+          "Live Video: The video that is being broadcasted by a user (this is owned and managed by a different team, but is relevant as we will need to integrate with it).",
+          "Comment: The message posted by a user on a live video.",
+          "In your interview, this can be as simple as a bulleted list like:",
+          "FB Live Comments Core Entities",
+          "Now, let's carry on to outline the API, tackling each functional requirement in sequence. This step-by-step approach will help us maintain focus and manage scope effectively."
+        ],
+        "figures": [
+          {
+            "src": {
+              "nodes": [
+                {
+                  "id": "core_entities",
+                  "label": "Core Entities"
+                },
+                {
+                  "id": "_comments",
+                  "label": "- Comments"
+                },
+                {
+                  "id": "_live_video",
+                  "label": "- Live Video"
+                },
+                {
+                  "id": "_user",
+                  "label": "- User"
+                }
+              ],
+              "edges": []
+            },
+            "caption": "FB Live Comments Core Entities"
+          }
+        ]
+      },
+      "API or System Interface": {
+        "content": [
+          "We'll need a simple POST endpoint to create a comment.",
+          "POST /comments/:liveVideoId\nHeader: JWT | SessionToken\n{\n    \"message\": \"Cool video!\"\n}",
+          "Note that the userId is not passed in the request body. Instead, it is a part of the request header, either by way of a session token or aJWT. This is a common pattern in modern web applications. The client is responsible for storing the session token or JWT and passing it in the request header. The server then validates the token and extracts the userId from it. This is a more secure approach than passing the userId in the request body because it prevents users from tampering with the request and impersonating other users.",
+          "We also need to be able to fetch past comments for a given live video.",
+          "GET /comments/:liveVideoId?cursor={last_comment_id}&pageSize=10&sort=desc",
+          "Pagination will be important for this endpoint. More on that later when we get deeper into the design."
+        ]
+      }
+    }
+  },
+  "High-Level Design": {
+    "content": [
+      "To get started with our high-level design, let's begin by addressing the first functional requirement."
+    ],
+    "subsections": {
+      "1) Viewers can post comments on a Live video feed": {
+        "content": [
+          "First things first, we need to make sure that users are able to post a comment.",
+          "This should be rather simple. Users will initiate a POST request to thePOST /comments/:liveVideoIdendpoint with the comment message. The server will then validate the request and store the comment in the database.",
+          "FB Live Comments Create Comment",
+          "Commenter Client: The commenter client is a web or mobile application that allows users to post comments on a live video feed. It is responsible for authenticating the user and sending the comment to the Comment Management Service.",
+          "Comment Management Service: The comment management service is responsible for creating and querying comments. It receives comments from the commenter client and stores them in the comments database. It will also be responsible for retrieving comments from the comments database and sending them to the viewer client -- more on that later.",
+          "Comments Database: For the comments database, we'll choose DynamoDB because it is a fast, scalable, and highly available database. It's is a good fit for our use case because we are storing simple comments that don't require complex relationships or transactions, though, other databases like Postgres or MySQL would work here as well.",
+          "Let's walk through exactly what happens when a user posts a new comment.",
+          "The users drafts a comment from their device (commenter client)",
+          "The commenter client sends the comment to the comment management service via thePOST /comments/:liveVideoIdAPI endpoint.",
+          "The comment management service receives the request and stores the comment in the comments database.",
+          "Great, that was easy, but things get a little more complicated when we start to consider how users will view comments."
+        ],
+        "figures": [
+          {
+            "src": {
+              "nodes": [
+                {
+                  "id": "commenter_client",
+                  "label": "Commenter Client"
+                },
+                {
+                  "id": "https",
+                  "label": "HTTPS"
+                },
+                {
+                  "id": "comment_management_service",
+                  "label": "Comment Management Service"
+                },
+                {
+                  "id": "comments_db",
+                  "label": "Comments DB"
+                },
+                {
+                  "id": "comment",
+                  "label": "Comment"
+                },
+                {
+                  "id": "_commentid_pk_",
+                  "label": "- commentId (PK)"
+                },
+                {
+                  "id": "_videoid_shard_",
+                  "label": "- videoId (shard)"
+                },
+                {
+                  "id": "_content",
+                  "label": "- content"
+                },
+                {
+                  "id": "_author",
+                  "label": "- author"
+                },
+                {
+                  "id": "_createdat_sk_",
+                  "label": "- createdAt (SK)"
+                }
+              ],
+              "edges": [
+                {
+                  "source": "_dynamodb_",
+                  "target": "https",
+                  "action": ""
+                },
+                {
+                  "source": "https",
+                  "target": "_dynamodb_",
+                  "action": ""
+                },
+                {
+                  "source": "comment_management_service",
+                  "target": "_dynamodb_",
+                  "action": ""
+                },
+                {
+                  "source": "comments_db",
+                  "target": "_dynamodb_",
+                  "action": ""
+                }
+              ]
+            },
+            "caption": "FB Live Comments Create Comment"
+          }
+        ]
+      },
+      "2) Viewers can see new comments being posted while they are watching the live video.": {
+        "content": [
+          "Now that we've handled comment creation, we need to tackle the challenge of comment distribution - ensuring that when one user posts a comment, all other viewers of the live video can see it.",
+          "We can start with the simplest approach: polling.",
+          "A working, though naive, approach is to have the clients poll for new comments every few seconds. We would use theGET /comments/:liveVideoId?since={last_comment_id}endpoint, adding asinceparameter to the request that points to the last comment id that the client has seen. The server would then return all comments that were posted after thesincecomment and the client would append them to the list of comments displayed on the screen.",
+          "Polling",
+          "This is a start, but it doesn't scale. As the number of comments and viewers grows, the polling frequency will need to increase to keep up with the demand. This will put a lot of strain on the database and will result in many unnecessary requests (since most of the times there will be no new comments to fetch). In order to meet our requirements of \"near real-time\" comments, we would need to poll the database every few milliseconds, which isn't feasible.",
+          "In your interview, if you already know the more accurate, yet complex, solution, you can jump right to it. Just make sure you justify your decision and explain the tradeoffs.",
+          "In the case that you are seeing a problem for the first time, starting simple like this is great and sets a foundation for you to build upon in the deep dives."
+        ],
+        "figures": [
+          {
+            "src": {
+              "nodes": [
+                {
+                  "id": "viewer",
+                  "label": "Viewer"
+                },
+                {
+                  "id": "server",
+                  "label": "Server"
+                },
+                {
+                  "id": "database",
+                  "label": "Database"
+                },
+                {
+                  "id": "database",
+                  "label": "Database"
+                },
+                {
+                  "id": "viewer_polls_every_few_seconds",
+                  "label": "Viewer polls every few seconds"
+                },
+                {
+                  "id": "this_can_lead_to_a_heavy_load_with_more_viewers",
+                  "label": "This can lead to a heavy load with more viewers"
+                },
+                {
+                  "id": "get",
+                  "label": "GET"
+                },
+                {
+                  "id": "query_for_new_comments",
+                  "label": "Query for new comments"
+                },
+                {
+                  "id": "return_comments",
+                  "label": "Return comments"
+                },
+                {
+                  "id": "list_of_new_comments",
+                  "label": "List of new comments"
+                },
+                {
+                  "id": "loop",
+                  "label": "loop"
+                },
+                {
+                  "id": "note_this_diagram_is_illustrative_you_would_never",
+                  "label": "Note: This diagram is illustrative, you would never"
+                },
+                {
+                  "id": "draw_this_in_a_real_interview",
+                  "label": "draw this in a real interview"
+                }
+              ],
+              "edges": [
+                {
+                  "source": "viewer",
+                  "target": "database",
+                  "action": "Server"
+                },
+                {
+                  "source": "viewer",
+                  "target": "_comments_livevideoid",
+                  "action": ""
+                },
+                {
+                  "source": "viewer_polls_every_few_seconds",
+                  "target": "viewer",
+                  "action": ""
+                },
+                {
+                  "source": "get",
+                  "target": "server",
+                  "action": ""
+                },
+                {
+                  "source": "_poll_for_comments_",
+                  "target": "viewer",
+                  "action": ""
+                },
+                {
+                  "source": "viewer",
+                  "target": "server",
+                  "action": ""
+                },
+                {
+                  "source": "get",
+                  "target": "_comments_livevideoid",
+                  "action": "/comments/:liveVideoId"
+                },
+                {
+                  "source": "query_for_new_comments",
+                  "target": "viewer",
+                  "action": ""
+                },
+                {
+                  "source": "database",
+                  "target": "viewer",
+                  "action": "[Poll for comments]"
+                },
+                {
+                  "source": "database",
+                  "target": "viewer",
+                  "action": ""
+                },
+                {
+                  "source": "return_comments",
+                  "target": "viewer",
+                  "action": ""
+                },
+                {
+                  "source": "this_can_lead_to_a_heavy_load_with_more_viewers",
+                  "target": "viewer",
+                  "action": ""
+                },
+                {
+                  "source": "list_of_new_comments",
+                  "target": "viewer",
+                  "action": ""
+                },
+                {
+                  "source": "list_of_new_comments",
+                  "target": "loop",
+                  "action": ""
+                },
+                {
+                  "source": "_poll_for_comments_",
+                  "target": "_comments_livevideoid",
+                  "action": ""
+                },
+                {
+                  "source": "loop",
+                  "target": "viewer",
+                  "action": ""
+                },
+                {
+                  "source": "loop",
+                  "target": "viewer",
+                  "action": "Viewer"
+                }
+              ]
+            },
+            "caption": "Polling"
+          }
+        ]
+      },
+      "3) Viewers can see comments made before they joined the live feed": {
+        "content": [
+          "When a user joins a live video, they need two things:",
+          "They should immediately start seeing new comments as they are posted in real-time",
+          "They should see a history of comments that were posted before they joined",
+          "For the history of comments, users should be able to scroll up to view progressively older comments - this UI pattern is called \"infinite scrolling\" and is commonly used in chat applications.",
+          "We can fetch the initial set of recent comments using ourGET /comments/:liveVideoIdendpoint. While we could use thesinceparameter we added earlier, that would give us comments newer than a timestamp - the opposite of what we want for loading historical comments. What we really want is something that will \"give me the N most recent comments that occurred before a certain timestamp\".",
+          "To do that, we can introduce pagination. Pagination is a common technique used to break up a large set of results into smaller chunks. It is typically used in conjunction with infinite scrolling to allow users to load more results as they scroll down the page.",
+          "Whenever you have a requirement that involves loading a large set of results, you should consider pagination.",
+          "When it comes to implementing pagination, there are two main approaches: offset pagination and cursor pagination."
+        ],
+        "Bad Solution: Offset Pagination": {
+          "content": [
+            "Bad Solution: Offset Pagination"
+          ],
+          "Approach": {
+            "content": [
+              "The simplest approach is to use offset pagination. Offset pagination is a technique that uses an offset to specify the starting point for fetching a set of results. Initially, the offset is set to 0 to load the most recent comments, and it increases by the number of comments fetched each time the user scrolls to load more (known as the page size). While this approach is straightforward to implement, it poses significant challenges in the context of a fast-moving, high-volume comment feed.",
+              "Example request:GET /comments/:liveVideoId?offset=0&pagesize=10"
+            ]
+          },
+          "Challenges": {
+            "content": [
+              "First, offset pagination is inefficient as the volume of comments grows. The database must count through all rows preceding the offset for each query, leading to slower response times with larger comment volumes. Most importantly, offset pagination is not stable. If a comment is added or deleted while the user is scrolling, the offset will be incorrect and the user will see duplicate or missing comments."
+            ]
+          }
+        },
+        "Great Solution: Cursor Pagination": {
+          "content": [
+            "Great Solution: Cursor Pagination"
+          ],
+          "Approach": {
+            "content": [
+              "A better approach is to use cursor pagination. Cursor pagination is a technique that uses a cursor to specify the starting point for fetching a set of results. The cursor is a unique identifier that points to a specific item in the list of results. Initially, the cursor is set to the most recent comment, and it is updated each time the user scrolls to load more. This approach is more efficient than offset pagination because the database does not need to count through all rows preceding the cursor for each query (assuming we built an index on the cursor field). Additionally, cursor pagination is stable, meaning that if a comment is added or deleted while the user is scrolling, the cursor will still point to the correct item in the list of results.",
+              "Example request:GET /comments/:liveVideoId?cursor={last_comment_id}&pageSize=10",
+              "Since we chose DynamoDB for our comments database, we can use thelast_comment_idas the cursor via DynamoDB'sLastEvaluatedKeyfeature. The query will look something like this:",
+              "{\n    \"TableName\": \"comments\",\n    \"KeyConditionExpression\": \"liveVideoId = :liveVideoId AND commentId < :cursor\",\n    \"ExpressionAttributeValues\": {\n        \":liveVideoId\": \"liveVideoId\",\n        \":cursor\": \"last_comment_id\"\n    },\n    \"ScanIndexForward\": false,\n    \"Limit\": \"pageSize\"\n}"
+            ]
+          },
+          "Challenges": {
+            "content": [
+              "While cursor pagination reduces database load compared to offset pagination, it still requires a database query for each new page of results, which can be significant in a high-traffic environment like ours.",
+              "Cursor based pagination is a better fit for our use case. Unlike offset pagination, it's more efficient as we don't need to scan through all preceding rows. It's stable - new comments won't disrupt the cursor's position during scrolling. It works well with DynamoDB's LastEvaluatedKey feature, and it scales better since performance remains consistent as comment volume grows."
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Potential Deep Dives": {
+    "content": [],
+    "subsections": {
+      "1) How can we ensure comments are broadcasted to viewers in real-time?": {
+        "content": [
+          "Our simple polling solution was a good start, but it's not going to pass the interview. Instead of having the client \"guess\" when new comments are ready and requesting them, we can use a push based model. This way the server can push new comments to the client as soon as they are created.",
+          "There are two main ways we can implement this. Websockets and Server Sent Events (SSE). Let's weigh the pros and cons of each."
+        ],
+        "Good Solution: Websockets": {
+          "content": [
+            "Good Solution: Websockets"
+          ],
+          "Approach": {
+            "content": [
+              "Websockets are a two-way communication channel between a client and a server. The client opens a connection to the server and keeps it open. The server keeps a connection open and sends new data to the client without requiring additional requests. When a new comment arrives, the Comment Management Server distributes it to all clients, enabling them to update the comment feed. This is much more efficient as it eliminates polling and enables the server to immediately push new comments to the client upon creation."
+            ]
+          },
+          "Challenges": {
+            "content": [
+              "Websockets are a good solution, and for real-time chat applications that have a more balanced read/write ratio, they are optimal. However, for our use case, the read/write ratio is not balanced. Comment creation is a relatively infrequent event, so while most viewers will never post a comment, they will be viewing/reading all comments.",
+              "Because of this imbalance, it doesn't make sense to open a two-way communication channel for each viewer, given that the overhead of maintaining the connection is high.",
+              "Websockets"
+            ],
+            "figures": [
+              {
+                "src": {
+                  "nodes": [
+                    {
+                      "id": "_when_new_comments_are_posted_",
+                      "label": "[When new comments are posted]"
+                    },
+                    {
+                      "id": "viewer",
+                      "label": "Viewer"
+                    },
+                    {
+                      "id": "server",
+                      "label": "Server"
+                    },
+                    {
+                      "id": "server",
+                      "label": "Server"
+                    },
+                    {
+                      "id": "establishing_websocket_connection",
+                      "label": "Establishing WebSocket Connection"
+                    },
+                    {
+                      "id": "connection_is_kept_open",
+                      "label": "Connection is kept open"
+                    },
+                    {
+                      "id": "client_processes_new_data_immediately",
+                      "label": "Client processes new data immediately"
+                    },
+                    {
+                      "id": "no_need_for_polling_server_pushes_updates_as_they",
+                      "label": "No need for polling, server pushes updates as they"
+                    },
+                    {
+                      "id": "establish_websocket_connection",
+                      "label": "Establish WebSocket Connection"
+                    },
+                    {
+                      "id": "acknowledge_connection",
+                      "label": "Acknowledge Connection"
+                    },
+                    {
+                      "id": "push_new_comment_data",
+                      "label": "Push new comment data"
+                    },
+                    {
+                      "id": "note_this_diagram_is_illustrative_you_would_never",
+                      "label": "Note: This diagram is illustrative, you would never"
+                    },
+                    {
+                      "id": "draw_this_in_a_real_interview",
+                      "label": "draw this in a real interview"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "source": "viewer",
+                      "target": "server",
+                      "action": ""
+                    },
+                    {
+                      "source": "no_need_for_polling_server_pushes_updates_as_they",
+                      "target": "viewer",
+                      "action": ""
+                    },
+                    {
+                      "source": "viewer",
+                      "target": "no_need_for_polling_server_pushes_updates_as_they",
+                      "action": ""
+                    },
+                    {
+                      "source": "establish_websocket_connection",
+                      "target": "viewer",
+                      "action": "Viewer"
+                    },
+                    {
+                      "source": "connection_is_kept_open",
+                      "target": "viewer",
+                      "action": ""
+                    },
+                    {
+                      "source": "viewer",
+                      "target": "happen",
+                      "action": "happen"
+                    },
+                    {
+                      "source": "establish_websocket_connection",
+                      "target": "viewer",
+                      "action": ""
+                    },
+                    {
+                      "source": "acknowledge_connection",
+                      "target": "viewer",
+                      "action": ""
+                    },
+                    {
+                      "source": "viewer",
+                      "target": "server",
+                      "action": "happen"
+                    },
+                    {
+                      "source": "acknowledge_connection",
+                      "target": "establish_websocket_connection",
+                      "action": ""
+                    },
+                    {
+                      "source": "push_new_comment_data",
+                      "target": "viewer",
+                      "action": ""
+                    },
+                    {
+                      "source": "push_new_comment_data",
+                      "target": "establish_websocket_connection",
+                      "action": "loop"
+                    },
+                    {
+                      "source": "loop",
+                      "target": "viewer",
+                      "action": ""
+                    }
+                  ]
+                },
+                "caption": "Websockets"
+              }
+            ]
+          }
+        },
+        "Great Solution: Server Sent Events (SSE)": {
+          "content": [
+            "Great Solution: Server Sent Events (SSE)"
+          ],
+          "Approach": {
+            "content": [
+              "A better approach is to use Server Sent Events (SSE). SSE is a persistent connection that operates over standard HTTP, making it simpler to implement than WebSockets. The server can push data to the client in real-time, while client-to-server communication happens through regular HTTP requests.",
+              "This is a better solution given our read/write ratio imbalance. The infrequent comment creation can use standard HTTP POST requests, while the frequent reads benefit from SSE's efficient one-way streaming."
+            ]
+          },
+          "Challenges": {
+            "content": [
+              "SSE introduces several infrastructure challenges that need careful consideration. Some proxies and load balancers lack support for streaming responses, leading to buffering issues that can be difficult to track down. Browsers also impose limits on concurrent SSE connections per domain, which creates problems for users trying to watch multiple live videos simultaneously. The long-lived nature of SSE connections complicates monitoring and debugging efforts.",
+              "SSE connections may be terminated by proxy servers and load balancers after periods of inactivity, but modern browsers handle this gracefully through automatic reconnection and the Last-Event-ID header, ensuring no comments are missed during reconnection.",
+              "SSE",
+              "Here is our updated flow:",
+              "User posts a comment and it is persisted to the database (as explained above)",
+              "In order for all viewers to see the comment, the Comment Management Service will send the comment over SSE to all connected clients that are subscribed to that live video.",
+              "The Commenter Client will receive the comment and add it to the comment feed for the viewer to see.",
+              "Astute readers have probably recognized that this solution does not scale. You're right. We'll get to that in the next deep dive."
+            ],
+            "figures": [
+              {
+                "src": {
+                  "nodes": [
+                    {
+                      "id": "commenter_client",
+                      "label": "Commenter Client"
+                    },
+                    {
+                      "id": "https",
+                      "label": "HTTPS"
+                    },
+                    {
+                      "id": "comment_management_service",
+                      "label": "Comment Management Service"
+                    },
+                    {
+                      "id": "comments_db",
+                      "label": "Comments DB"
+                    },
+                    {
+                      "id": "_for_create",
+                      "label": "- for /create"
+                    },
+                    {
+                      "id": "_for_comment",
+                      "label": "- for comment"
+                    },
+                    {
+                      "id": "broadcasting",
+                      "label": "broadcasting"
+                    },
+                    {
+                      "id": "sse",
+                      "label": "SSE"
+                    },
+                    {
+                      "id": "_when_a_new_comment_is_posted_persist_in_db",
+                      "label": "- When a new comment is posted, persist in DB"
+                    },
+                    {
+                      "id": "and_sent_over_sse_to_connected_clients",
+                      "label": "and sent over SSE to connected clients"
+                    },
+                    {
+                      "id": "comment",
+                      "label": "Comment"
+                    },
+                    {
+                      "id": "_commentid_pk_",
+                      "label": "- commentId (PK)"
+                    },
+                    {
+                      "id": "_videoid_shard_",
+                      "label": "- videoId (shard)"
+                    },
+                    {
+                      "id": "_content",
+                      "label": "- content"
+                    },
+                    {
+                      "id": "_author",
+                      "label": "- author"
+                    },
+                    {
+                      "id": "_createdat_sk_",
+                      "label": "- createdAt (SK)"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "source": "_dynamodb_",
+                      "target": "_for_create",
+                      "action": ""
+                    },
+                    {
+                      "source": "commenter_client",
+                      "target": "_dynamodb_",
+                      "action": "(DynamoDB)"
+                    },
+                    {
+                      "source": "_for_create",
+                      "target": "_dynamodb_",
+                      "action": ""
+                    },
+                    {
+                      "source": "https",
+                      "target": "_dynamodb_",
+                      "action": ""
+                    },
+                    {
+                      "source": "comment_management_service",
+                      "target": "_dynamodb_",
+                      "action": ""
+                    },
+                    {
+                      "source": "comments_db",
+                      "target": "_dynamodb_",
+                      "action": ""
+                    },
+                    {
+                      "source": "_for_comment",
+                      "target": "_dynamodb_",
+                      "action": ""
+                    },
+                    {
+                      "source": "sse",
+                      "target": "_dynamodb_",
+                      "action": ""
+                    }
+                  ]
+                },
+                "caption": "SSE"
+              }
+            ]
+          }
+        }
+      },
+      "2) How will the system scale to support millions of concurrent viewers?": {
+        "content": [
+          "We landed on Server Sent Events (SSE) being the appropriate technology. Now we need to figure out how to scale it. With SSE, we need to maintain an open connection for each viewer. Modern servers and operating systems can handle large numbers of concurrent connections—commonly in the range of 100k. Realistically, system resources like CPU, memory, and file descriptors become the bottleneck before you hit any theoretical limit. If we want to support many millions of concurrent viewers, we simply won't be able to do it on a single machine. We must scale horizontally by adding more servers.",
+          "The question then becomes how do we distribute the load across multiple servers and ensure each server knows which comments to send to which viewers?",
+          "Contrary to a common misconception, the capacity isn't limited to 65,535 connections. That number refers to the range of port numbers, not the number of connections a single server port can handle. Each TCP connection is identified by a unique combination of source IP, source port, destination IP, and destination port. With proper OS tuning and resource allocation, a single listening port can handle hundreds of thousands or even millions of concurrent SSE connections.",
+          "In practice, however, the server's hardware and OS limits—rather than the theoretical port limit—determine the maximum number of simultaneous connections.",
+          "Before we dive into solutions, let's understand the core challenge with horizontal scaling:",
+          "When we add more servers to handle the load, viewers watching the same live video may end up connected to different servers. For example:",
+          "UserA is watching Live Video 1 and connected to Server 1",
+          "UserB is watching Live Video 1 but connected to Server 2",
+          "Now imagine a new comment is posted on Live Video 1. If this comment request hits Server 1:",
+          "Server 1 can easily send it to UserA since they're directly connected",
+          "But Server 1 has no way to send it to UserB, who is connected to Server 2",
+          "This is our key challenge: How do we ensure all viewers see new comments, regardless of which server they're connected to?"
+        ],
+        "Bad Solution: Horizontal Scaling with Load Balancer and Pub/Sub": {
+          "content": [
+            "Bad Solution: Horizontal Scaling with Load Balancer and Pub/Sub"
+          ],
+          "Approach": {
+            "content": [
+              "The first thing we need to do is separate out the write and read traffic by creating Realtime Messaging Servers that are responsible for sending comments to viewers. We separate this out because the write traffic is much lower than the read traffic and we need to be able to scale the read traffic independently.",
+              "To distribute incoming traffic evenly across our multiple servers we can use a simple load balancing algorithm likeround robin. Upon connecting to a Realtime Messaging Server through the load balancer, the client needs to send a message informing the server of which live video it is watching. The Realtime Messaging Server then updates a mapping in local memory with this information. This map would look something like this:",
+              "{\n    \"liveVideoId1\": [\"sseConnection1\", \"sseConnection2\", \"sseConnection3\"],\n    \"liveVideoId2\": [\"sseConnection4\", \"sseConnection5\", \"sseConnection6\"],\n    \"liveVideoId3\": [\"sseConnection7\", \"sseConnection8\", \"sseConnection9\"],\n}",
+              "WheresseConnection{N}is a pointer to the SSE connection for that viewer. Now, anytime a new comment is created, the server can loop through the list of viewers for that live video and send the comment to each one.",
+              "The question then becomes how does each Realtime Messaging Server know that a new comment was created? The most common solution is to introduce pub/sub.",
+              "A pub/sub system is a messaging system that uses a publish/subscribe model. Publishers send messages to a channel or topic, and subscribers receive messages from a channel or topic. In our case, the comment management service would publish a message to a channel whenever a new comment is created. The Realtime Messaging Servers would all subscribe to this channel and receive the message. They would then send the comment to all the viewers that are watching the live video."
+            ]
+          },
+          "Challenges": {
+            "content": [
+              "This approach works, but it is not very efficient. Each Realtime Messaging Server needs to process every comment, even if it is not broadcasting the live video. This leads to inefficiency, slow performance, and high compute intensity that's impractical at FB scale.",
+              "Simple Pub/Sub"
+            ],
+            "figures": [
+              {
+                "src": {
+                  "nodes": [
+                    {
+                      "id": "commenter_client",
+                      "label": "Commenter Client"
+                    },
+                    {
+                      "id": "https",
+                      "label": "HTTPS"
+                    },
+                    {
+                      "id": "load",
+                      "label": "Load"
+                    },
+                    {
+                      "id": "balancer",
+                      "label": "Balancer"
+                    },
+                    {
+                      "id": "comment_management_service",
+                      "label": "Comment Management Service"
+                    },
+                    {
+                      "id": "comments_db",
+                      "label": "Comments DB"
+                    },
+                    {
+                      "id": "_dynamodb_",
+                      "label": "(DynamoDB)"
+                    },
+                    {
+                      "id": "_for_create",
+                      "label": "- for /create"
+                    },
+                    {
+                      "id": "and_broadcast_via_pub_sub",
+                      "label": "and broadcast via pub/sub"
+                    },
+                    {
+                      "id": "realtime_messaging",
+                      "label": "Realtime Messaging"
+                    },
+                    {
+                      "id": "service",
+                      "label": "Service"
+                    },
+                    {
+                      "id": "sse",
+                      "label": "SSE"
+                    },
+                    {
+                      "id": "redis_pub_sub",
+                      "label": "Redis Pub/Sub"
+                    },
+                    {
+                      "id": "_broadcast_new_comments",
+                      "label": "- broadcast new comments"
+                    },
+                    {
+                      "id": "_needs_to_process_every_new_comment",
+                      "label": "- needs to process EVERY new comment"
+                    },
+                    {
+                      "id": "and_it_computationally_overwhelmed",
+                      "label": "and it computationally overwhelmed"
+                    },
+                    {
+                      "id": "comment",
+                      "label": "Comment"
+                    },
+                    {
+                      "id": "_commentid_pk_",
+                      "label": "- commentId (PK)"
+                    },
+                    {
+                      "id": "_videoid_shard_",
+                      "label": "- videoId (shard)"
+                    },
+                    {
+                      "id": "_content",
+                      "label": "- content"
+                    },
+                    {
+                      "id": "_author",
+                      "label": "- author"
+                    },
+                    {
+                      "id": "_createdat_sk_",
+                      "label": "- createdAt (SK)"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "source": "balancer",
+                      "target": "_when_a_new_comment_is_posted_persist_in_db",
+                      "action": ""
+                    },
+                    {
+                      "source": "commenter_client",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "_for_create",
+                      "target": "service",
+                      "action": ""
+                    },
+                    {
+                      "source": "_for_create",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "load",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "balancer",
+                      "target": "_for_create",
+                      "action": ""
+                    },
+                    {
+                      "source": "https",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "_when_a_new_comment_is_posted_persist_in_db",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "comment_management_service",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "load",
+                      "target": "service",
+                      "action": ""
+                    },
+                    {
+                      "source": "comments_db",
+                      "target": "balancer",
+                      "action": "- When a new comment is posted, persist in DB"
+                    },
+                    {
+                      "source": "redis_pub_sub",
+                      "target": "service",
+                      "action": ""
+                    },
+                    {
+                      "source": "comments_db",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "realtime_messaging",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "sse",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "redis_pub_sub",
+                      "target": "balancer",
+                      "action": ""
+                    }
+                  ]
+                },
+                "caption": "Simple Pub/Sub"
+              }
+            ]
+          }
+        },
+        "Good Solution: Pub/Sub Partitioning into Channels per Live Video": {
+          "content": [
+            "Good Solution: Pub/Sub Partitioning into Channels per Live Video"
+          ],
+          "Approach": {
+            "content": [
+              "To improve upon the previous approach, we can partition the comment stream into different channels based on the live video. Each Realtime Messaging Server would subscribe only to the channels it needs, determined by the viewers connected to it.",
+              "Since having a channel per live video will consume a lot of resources and, in some cases like with Kafka may even be infeasible, we can use a hashing function to distribute the load across multiple channels.",
+              "We can create N channels and determine which channel to broadcast a comment to based onhash(liveVideoId) % N.",
+              "This ensures there is a reasonable upper bound on the number of channels."
+            ]
+          },
+          "Challenges": {
+            "content": [
+              "While this approach is more efficient, it is not perfect. With the load balancer using round robin, there's a risk that a server could end up with viewers subscribed to many different streams, replicating the issue from the previous approach.",
+              "Partitioned Pub/Sub"
+            ],
+            "figures": [
+              {
+                "src": {
+                  "nodes": [
+                    {
+                      "id": "commenter_client",
+                      "label": "Commenter Client"
+                    },
+                    {
+                      "id": "https",
+                      "label": "HTTPS"
+                    },
+                    {
+                      "id": "load",
+                      "label": "Load"
+                    },
+                    {
+                      "id": "balancer",
+                      "label": "Balancer"
+                    },
+                    {
+                      "id": "comment_management_service",
+                      "label": "Comment Management Service"
+                    },
+                    {
+                      "id": "comments_db",
+                      "label": "Comments DB"
+                    },
+                    {
+                      "id": "_dynamodb_",
+                      "label": "(DynamoDB)"
+                    },
+                    {
+                      "id": "comment",
+                      "label": "Comment"
+                    },
+                    {
+                      "id": "_commentid",
+                      "label": "- commentId"
+                    },
+                    {
+                      "id": "_videoid_pk_",
+                      "label": "- videoId (PK)"
+                    },
+                    {
+                      "id": "_content",
+                      "label": "- content"
+                    },
+                    {
+                      "id": "_author",
+                      "label": "- author"
+                    },
+                    {
+                      "id": "_createdat_sk_",
+                      "label": "- createdAt (SK)"
+                    },
+                    {
+                      "id": "_for_create",
+                      "label": "- for /create"
+                    },
+                    {
+                      "id": "and_sent_over_sse_to_connected_clients",
+                      "label": "and sent over SSE to connected clients"
+                    },
+                    {
+                      "id": "realtime_messaging",
+                      "label": "Realtime Messaging"
+                    },
+                    {
+                      "id": "service",
+                      "label": "Service"
+                    },
+                    {
+                      "id": "sse",
+                      "label": "SSE"
+                    },
+                    {
+                      "id": "v3",
+                      "label": "v3"
+                    },
+                    {
+                      "id": "redis_pub_sub",
+                      "label": "Redis Pub/Sub"
+                    },
+                    {
+                      "id": "_broadcast_new_comments",
+                      "label": "- broadcast new comments"
+                    },
+                    {
+                      "id": "_partition_by_live_videoid",
+                      "label": "- partition by live videoId"
+                    },
+                    {
+                      "id": "_so_topic_per_video_",
+                      "label": "(so topic per video)"
+                    },
+                    {
+                      "id": "_subscribe_only_to_the_topics_with_comments_from",
+                      "label": "- Subscribe only to the topics with comments from"
+                    },
+                    {
+                      "id": "live_videos_that_your_clients_are_watching",
+                      "label": "live videos that your clients are watching"
+                    },
+                    {
+                      "id": "v2",
+                      "label": "v2"
+                    },
+                    {
+                      "id": "v1",
+                      "label": "v1"
+                    },
+                    {
+                      "id": "v4",
+                      "label": "v4"
+                    },
+                    {
+                      "id": "v5",
+                      "label": "v5"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "source": "balancer",
+                      "target": "_when_a_new_comment_is_posted_persist_in_db",
+                      "action": ""
+                    },
+                    {
+                      "source": "commenter_client",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "_for_create",
+                      "target": "service",
+                      "action": ""
+                    },
+                    {
+                      "source": "_for_create",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "balancer",
+                      "target": "_for_create",
+                      "action": ""
+                    },
+                    {
+                      "source": "https",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "_when_a_new_comment_is_posted_persist_in_db",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "comment_management_service",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "load",
+                      "target": "service",
+                      "action": ""
+                    },
+                    {
+                      "source": "comments_db",
+                      "target": "balancer",
+                      "action": "- When a new comment is posted, persist in DB"
+                    },
+                    {
+                      "source": "redis_pub_sub",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v1",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "realtime_messaging",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "sse",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v3",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v2",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v4",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v5",
+                      "target": "balancer",
+                      "action": ""
+                    }
+                  ]
+                },
+                "caption": "Partitioned Pub/Sub"
+              }
+            ]
+          }
+        },
+        "Great Solution: Partitioned Pub/Sub with Layer 7 Load Balancer": {
+          "content": [
+            "Great Solution: Partitioned Pub/Sub with Layer 7 Load Balancer"
+          ],
+          "Approach": {
+            "content": [
+              "To address the issue of servers handling viewers from many different live videos, we need a more intelligent allocation strategy. The goal is to have each server primarily handle viewers of the same live video, making it easier to limit the number of topics or channels each server needs to subscribe to.",
+              "There are two ways we can achieve this allocation, both require some scripting or configuration.",
+              "Option 1: Intelligent Routing via Scripts or ConfigurationA Layer 7 load balancer or API gateway can leverageconsistent hashingbased on theliveVideoId. By inspecting the request—such as a header or path parameter that includes theliveVideoId—the load balancer can apply a hashing function that always routes viewers of the same video to the same server. Tools like NGINX or Envoy can be scripted with Lua or configuration directives to achieve this content-based routing, reducing overhead and keeping related viewers together.",
+              "Option 2: Dynamic Lookup via a Coordination Service (e.g.,ZooKeeper)Instead of relying on hashing alone, we can store a dynamic mapping ofliveVideoIdto a specific server in a coordination service like Zookeeper. The load balancer or custom proxy layer queries Zookeeper to determine the correct server for eachliveVideoId. As traffic patterns change, new servers can register themselves or existing mappings can be updated in Zookeeper, and the load balancer will route future requests accordingly. This approach offers more flexibility but introduces operational complexity and requires caching and careful failure handling.",
+              "The reality is this is pretty complex, and you would not be expected to go into too much detail here in an interview. Just explaining that you need a way to colocate viewers of the same live video to the same server is good enough. Then mention what some high level options would be.",
+              "Pub/Sub with Layer 7 Load Balancer",
+              "Advanced candidates may point out the tradeoffs in different pub/sub systems. For example, Kafka is a popular pub/sub system that is highly scalable and fault-tolerant, but it has a hard time adapting to scenarios where dynamic subscription and unsubscription based on user interactions, such as scrolling through a live feed or switching live videos, is required. Redis pub/sub provides low latency but offers no message persistence (fire-and-forget), which could lead to missed messages during disconnections. Kafka, while having higher latency, provides message persistence and exactly-once delivery semantics, making it more suitable for scenarios where message delivery guarantees are critical.",
+              "However, the main concern with Redis is its potential for data loss due to periodic disk writes and the challenges of memory limitation, which could be a bottleneck for scalability. Additionally, while Redis offers high availability configurations like Redis Sentinel or Redis Active-Active, these add to the operational complexity of managing a Redis-based system. The pub/sub solution is the \"correct academic answer\" and should clearly pass the interview, but the reality is choosing the right pub/sub system is a complex decision that requires a deep understanding of the system's requirements and tradeoffs."
+            ],
+            "figures": [
+              {
+                "src": {
+                  "nodes": [
+                    {
+                      "id": "commenter_client",
+                      "label": "Commenter Client"
+                    },
+                    {
+                      "id": "load",
+                      "label": "Load"
+                    },
+                    {
+                      "id": "balancer",
+                      "label": "Balancer"
+                    },
+                    {
+                      "id": "_layer_7_for",
+                      "label": "- layer 7 for"
+                    },
+                    {
+                      "id": "comment_management_service",
+                      "label": "Comment Management Service"
+                    },
+                    {
+                      "id": "comments_db",
+                      "label": "Comments DB"
+                    },
+                    {
+                      "id": "_dynamodb_",
+                      "label": "(DynamoDB)"
+                    },
+                    {
+                      "id": "_for_create",
+                      "label": "- for /create"
+                    },
+                    {
+                      "id": "_when_a_new_comment_is_posted_persist_in_db",
+                      "label": "- When a new comment is posted, persist in DB"
+                    },
+                    {
+                      "id": "and_sent_over_sse_to_connected_clients",
+                      "label": "and sent over SSE to connected clients"
+                    },
+                    {
+                      "id": "realtime_messaging",
+                      "label": "Realtime Messaging"
+                    },
+                    {
+                      "id": "service",
+                      "label": "Service"
+                    },
+                    {
+                      "id": "sse",
+                      "label": "SSE"
+                    },
+                    {
+                      "id": "_connect_based_on_livevideoid",
+                      "label": "- connect based on LiveVideoId"
+                    },
+                    {
+                      "id": "v3",
+                      "label": "v3"
+                    },
+                    {
+                      "id": "redis_pub_sub",
+                      "label": "Redis Pub/Sub"
+                    },
+                    {
+                      "id": "_broadcast_new_comments",
+                      "label": "- broadcast new comments"
+                    },
+                    {
+                      "id": "_partition_by_live_videoid",
+                      "label": "- partition by live videoId"
+                    },
+                    {
+                      "id": "_subscribe_only_to_the_topics_with_comments_from",
+                      "label": "- Subscribe only to the topics with comments from"
+                    },
+                    {
+                      "id": "live_videos_that_your_clients_are_watching",
+                      "label": "live videos that your clients are watching"
+                    },
+                    {
+                      "id": "_viewers_of_same_video_end_up_on_same_box_based",
+                      "label": "- Viewers of same video end up on same box based"
+                    },
+                    {
+                      "id": "on_layer_7_lb_leads_to_fewer_topics_to_subscribe_to",
+                      "label": "on layer 7 LB. Leads to fewer topics to subscribe to"
+                    },
+                    {
+                      "id": "per_server",
+                      "label": "per server"
+                    },
+                    {
+                      "id": "v2",
+                      "label": "v2"
+                    },
+                    {
+                      "id": "v1",
+                      "label": "v1"
+                    },
+                    {
+                      "id": "v4",
+                      "label": "v4"
+                    },
+                    {
+                      "id": "v5",
+                      "label": "v5"
+                    },
+                    {
+                      "id": "comment",
+                      "label": "Comment"
+                    },
+                    {
+                      "id": "_commentid_pk_",
+                      "label": "- commentId (PK)"
+                    },
+                    {
+                      "id": "_videoid_shard_",
+                      "label": "- videoId (shard)"
+                    },
+                    {
+                      "id": "_content",
+                      "label": "- content"
+                    },
+                    {
+                      "id": "_author",
+                      "label": "- author"
+                    },
+                    {
+                      "id": "_createdat_sk_",
+                      "label": "- createdAt (SK)"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "source": "balancer",
+                      "target": "_when_a_new_comment_is_posted_persist_in_db",
+                      "action": ""
+                    },
+                    {
+                      "source": "commenter_client",
+                      "target": "balancer",
+                      "action": "SSE"
+                    },
+                    {
+                      "source": "_for_create",
+                      "target": "_connect_based_on_livevideoid",
+                      "action": ""
+                    },
+                    {
+                      "source": "_for_create",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "balancer",
+                      "target": "_for_create",
+                      "action": ""
+                    },
+                    {
+                      "source": "https",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "_when_a_new_comment_is_posted_persist_in_db",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "comment_management_service",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "load",
+                      "target": "_connect_based_on_livevideoid",
+                      "action": ""
+                    },
+                    {
+                      "source": "comments_db",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "redis_pub_sub",
+                      "target": "_connect_based_on_livevideoid",
+                      "action": ""
+                    },
+                    {
+                      "source": "redis_pub_sub",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v1",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "realtime_messaging",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "https",
+                      "target": "load",
+                      "action": "HTTPS"
+                    },
+                    {
+                      "source": "sse",
+                      "target": "commenter_client",
+                      "action": ""
+                    },
+                    {
+                      "source": "v3",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v2",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v4",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "v5",
+                      "target": "balancer",
+                      "action": ""
+                    }
+                  ]
+                },
+                "caption": "Pub/Sub with Layer 7 Load Balancer"
+              }
+            ]
+          }
+        },
+        "Great Solution: Scalable Dispatcher Instead of Pub/Sub": {
+          "content": [
+            "Great Solution: Scalable Dispatcher Instead of Pub/Sub"
+          ],
+          "Approach": {
+            "content": [
+              "All our previous approaches relied on a pub/sub system, where each Realtime Messaging Server subscribes to topics and receives comments as they're published. This means the comment creation service doesn't need to know the destination server; it just publishes messages and the right servers pick them up. While standard and effective, this approach adds complexity in managing subscriptions and scaling read-heavy workloads.",
+              "An alternative approach inverts the model: the service creating comments directly routes each new comment to the correct Realtime Messaging Server. To achieve this, we introduce a Dispatcher Service. Instead of broadcasting to topics, the Dispatcher Service determines the exact server responsible for the viewers of a given live video and sends the comment there.",
+              "So when a new comment comes in, the receiving server asks the Dispatcher Service, \"What are all the other servers I should send this comment to?\"",
+              "At a high-level, here is how it works:",
+              "Maintaining Dynamic Mappings:The Dispatcher Service keeps a dynamic map of which Realtime Messaging Server is responsible for which liveVideoId. This can be stored in memory and periodically refreshed from a consistent store (like Zookeeper or etcd), or updated via heartbeats and registration protocols as servers join or leave.",
+              "Registration & Discovery:When a Realtime Messaging Server comes online, it registers with the Dispatcher Service (or the coordination store it consults). The Dispatcher updates its internal mapping to reflect which server is now serving particular live videos. Likewise, if a server scales down or fails, the Dispatcher updates the mapping accordingly.",
+              "Direct Routing:Upon receiving a new comment, the comment management service calls the Dispatcher Service to determine the correct server. The Dispatcher uses its current mapping and forwards the comment directly to the responsible Realtime Messaging Server, which then sends it to connected viewers.",
+              "Scalability & Redundancy:In high-demand scenarios, multiple Dispatcher instances can run in parallel behind a load balancer. They all consult the same coordination data, ensuring consistency. This replication adds redundancy, making the system more resilient to failures.",
+              "Maintaining Dynamic Mappings:The Dispatcher Service keeps a dynamic map of which Realtime Messaging Server is responsible for which liveVideoId. This can be stored in memory and periodically refreshed from a consistent store (like Zookeeper or etcd), or updated via heartbeats and registration protocols as servers join or leave.",
+              "Registration & Discovery:When a Realtime Messaging Server comes online, it registers with the Dispatcher Service (or the coordination store it consults). The Dispatcher updates its internal mapping to reflect which server is now serving particular live videos. Likewise, if a server scales down or fails, the Dispatcher updates the mapping accordingly.",
+              "Direct Routing:Upon receiving a new comment, the comment management service calls the Dispatcher Service to determine the correct server. The Dispatcher uses its current mapping and forwards the comment directly to the responsible Realtime Messaging Server, which then sends it to connected viewers.",
+              "Scalability & Redundancy:In high-demand scenarios, multiple Dispatcher instances can run in parallel behind a load balancer. They all consult the same coordination data, ensuring consistency. This replication adds redundancy, making the system more resilient to failures.",
+              "Dispatcher Service"
+            ],
+            "figures": [
+              {
+                "src": {
+                  "nodes": [
+                    {
+                      "id": "commenter_client",
+                      "label": "Commenter Client"
+                    },
+                    {
+                      "id": "https",
+                      "label": "HTTPS"
+                    },
+                    {
+                      "id": "load",
+                      "label": "Load"
+                    },
+                    {
+                      "id": "balancer",
+                      "label": "Balancer"
+                    },
+                    {
+                      "id": "_layer_7_for",
+                      "label": "- layer 7 for"
+                    },
+                    {
+                      "id": "comment_management_service",
+                      "label": "Comment Management Service"
+                    },
+                    {
+                      "id": "comments_db",
+                      "label": "Comments DB"
+                    },
+                    {
+                      "id": "_dynamodb_",
+                      "label": "(DynamoDB)"
+                    },
+                    {
+                      "id": "_for_create",
+                      "label": "- for /create"
+                    },
+                    {
+                      "id": "and_send_to_dispatcher",
+                      "label": "and send to dispatcher"
+                    },
+                    {
+                      "id": "realtime_messaging",
+                      "label": "Realtime Messaging"
+                    },
+                    {
+                      "id": "service",
+                      "label": "Service"
+                    },
+                    {
+                      "id": "sse",
+                      "label": "SSE"
+                    },
+                    {
+                      "id": "_connect_based_on_livevideoid",
+                      "label": "- connect based on LiveVideoId"
+                    },
+                    {
+                      "id": "https_not_pub_sub_",
+                      "label": "HTTPS (not pub/sub)"
+                    },
+                    {
+                      "id": "dispatcher",
+                      "label": "Dispatcher"
+                    },
+                    {
+                      "id": "_responsible_for_sending_to_correct",
+                      "label": "- responsible for sending to correct"
+                    },
+                    {
+                      "id": "messaging_servers",
+                      "label": "messaging servers"
+                    },
+                    {
+                      "id": "comment",
+                      "label": "Comment"
+                    },
+                    {
+                      "id": "_commentid_pk_",
+                      "label": "- commentId (PK)"
+                    },
+                    {
+                      "id": "_videoid_shard_",
+                      "label": "- videoId (shard)"
+                    },
+                    {
+                      "id": "_content",
+                      "label": "- content"
+                    },
+                    {
+                      "id": "_author",
+                      "label": "- author"
+                    },
+                    {
+                      "id": "_createdat_sk_",
+                      "label": "- createdAt (SK)"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "source": "balancer",
+                      "target": "_when_a_new_comment_is_posted_persist_in_db",
+                      "action": ""
+                    },
+                    {
+                      "source": "commenter_client",
+                      "target": "balancer",
+                      "action": "SSE"
+                    },
+                    {
+                      "source": "_for_create",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "balancer",
+                      "target": "_for_create",
+                      "action": ""
+                    },
+                    {
+                      "source": "https",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "_when_a_new_comment_is_posted_persist_in_db",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "comment_management_service",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "load",
+                      "target": "_connect_based_on_livevideoid",
+                      "action": ""
+                    },
+                    {
+                      "source": "comment",
+                      "target": "balancer",
+                      "action": "- When a new comment is posted, persist in DB"
+                    },
+                    {
+                      "source": "comments_db",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "https_not_pub_sub_",
+                      "target": "balancer",
+                      "action": ""
+                    },
+                    {
+                      "source": "sse",
+                      "target": "commenter_client",
+                      "action": ""
+                    },
+                    {
+                      "source": "dispatcher",
+                      "target": "balancer",
+                      "action": ""
+                    }
+                  ]
+                },
+                "caption": "Dispatcher Service"
+              }
+            ]
+          },
+          "Challenges": {
+            "content": [
+              "The main challenge is ensuring the Dispatcher Service's mapping is accurate and up-to-date. Rapid changes in viewer distribution (e.g., a viral stream causing a sudden influx of viewers) require that the Dispatcher's view of the system be refreshed frequently. This might involve coordination services like Zookeeper or etcd, which must efficiently propagate changes to all Dispatcher instances.",
+              "Another difficulty is maintaining consistency across multiple Dispatcher instances. If they each cache routing information, updates must be coordinated to prevent stale mappings. Strong consistency can be achieved through a distributed coordination service, careful cache invalidation policies, and possibly a leader election mechanism to manage updates safely.",
+              "Both the pub/sub approach with viewer co-location and the dispatcher service approach are great solutions. The pub/sub is typically easier with fewer corner cases, so it is the one I would use in an interview, but both are \"correct\" answers."
+            ]
+          }
+        }
+      }
+    }
+  },
+  "What is Expected at Each Level?": {
+    "content": [
+      "Ok, that was a lot. You may be thinking, \"how much of that is actually required from me in an interview?\" Let's break it down."
+    ],
+    "subsections": {
+      "Mid-level": {
+        "content": [
+          "Breadth vs. Depth:A mid-level candidate will be mostly focused on breadth (80% vs 20%). You should be able to craft a high-level design that meets the functional requirements you've defined, but many of the components will be abstractions with which you only have surface-level familiarity.",
+          "Probing the Basics:Your interviewer will spend some time probing the basics to confirm that you know what each component in your system does. For example, if you add an API Gateway, expect that they may ask you what it does and how it works (at a high level). In short, the interviewer is not taking anything for granted with respect to your knowledge.",
+          "Mixture of Driving and Taking the Backseat:You should drive the early stages of the interview in particular, but the interviewer doesn't expect that you are able to proactively recognize problems in your design with high precision. Because of this, it's reasonable that they will take over and drive the later stages of the interview while probing your design.",
+          "The Bar for FB Live Comments:For this question, I expect that candidates proactively realize the limitations with a polling approach and start to reason around a push based model. With only minor hints they should be able to come up with the pub/sub solution and should be able to scale it with some help from the interviewer."
+        ]
+      },
+      "Senior": {
+        "content": [
+          "Depth of Expertise: As a senior candidate, expectations shift towards more in-depth knowledge — about 60% breadth and 40% depth. This means you should be able to go into technical details in areas where you have hands-on experience. It's crucial that you demonstrate a deep understanding of key concepts and technologies relevant to the task at hand.",
+          "Advanced System Design: You should be familiar with advanced system design principles. For example, knowing how to use pub/sub for broadcasting messages. You're also expected to understand some of the challenges that come with it and discuss detailed scaling strategies (it's ok if this took some probing/hints from the interviewer). Your ability to navigate these advanced topics with confidence and clarity is key.",
+          "Articulating Architectural Decisions: You should be able to clearly articulate the pros and cons of different architectural choices, especially how they impact scalability, performance, and maintainability. You justify your decisions and explain the trade-offs involved in your design choices.",
+          "Problem-Solving and Proactivity: You should demonstrate strong problem-solving skills and a proactive approach. This includes anticipating potential challenges in your designs and suggesting improvements. You need to be adept at identifying and addressing bottlenecks, optimizing performance, and ensuring system reliability.",
+          "The Bar for Fb Live Comments:For this question, E5 candidates are expected to speed through the initial high level design so you can spend time discussing, in detail, how to scale the system. You should be able to reason through the limitations of the initial design and come up with a pub/sub solution with minimal hints. You should proactively lead the scaling discussion and be able to reason through the trade-offs of different solutions."
+        ]
+      },
+      "Staff+": {
+        "content": [
+          "Emphasis on Depth: As a staff+ candidate, the expectation is a deep dive into the nuances of system design — I'm looking for about 40% breadth and 60% depth in your understanding. This level is all about demonstrating that, while you may not have solved this particular problem before, you have solved enough problems in the real world to be able to confidently design a solution backed by your experience.",
+          "You should know which technologies to use, not just in theory but in practice, and be able to draw from your past experiences to explain how they'd be applied to solve specific problems effectively. The interviewer knows you know the small stuff (REST API, data normalization, etc) so you can breeze through that at a high level so you have time to get into what is interesting.",
+          "High Degree of Proactivity: At this level, an exceptional degree of proactivity is expected. You should be able to identify and solve issues independently, demonstrating a strong ability to recognize and address the core challenges in system design. This involves not just responding to problems as they arise but anticipating them and implementing preemptive solutions. Your interviewer should intervene only to focus, not to steer.",
+          "Practical Application of Technology: You should be well-versed in the practical application of various technologies. Your experience should guide the conversation, showing a clear understanding of how different tools and systems can be configured in real-world scenarios to meet specific requirements.",
+          "Complex Problem-Solving and Decision-Making: Your problem-solving skills should be top-notch. This means not only being able to tackle complex technical challenges but also making informed decisions that consider various factors such as scalability, performance, reliability, and maintenance.",
+          "Advanced System Design and Scalability: Your approach to system design should be advanced, focusing on scalability and reliability, especially under high load conditions. This includes a thorough understanding of distributed systems, load balancing, caching strategies, and other advanced concepts necessary for building robust, scalable systems.",
+          "The Bar for FB Live Comments:For a staff+ candidate, expectations are high regarding depth and quality of solutions, particularly when it comes to scaling the broadcasting of comments. I expect staff+ candidates to not only identify the pub/sub solution but proactively call out the limitations around reliability or scalability and suggest solutions. They likely have a good understanding of the exact technology they would use and can discuss the trade-offs of different solutions in detail.",
+          "Login to mark as read"
+        ],
+        "Not sure where your gaps are?": {
+          "content": [
+            "Mock interview with an interviewer from your target company. Learn exactly what's standing in between you and your dream job.",
+            "Your account is free and you can post anonymously if you choose."
+          ]
+        },
+        "Questions": {
+          "content": []
+        },
+        "Links": {
+          "content": []
+        },
+        "Legal": {
+          "content": []
+        },
+        "Contact": {
+          "content": [
+            "7511 Greenwood Ave North\nUnit #4238 Seattle\nWA 98103",
+            "©2025Optick Labs Inc. All rights reserved."
+          ]
+        }
+      }
+    }
+  }
+}
