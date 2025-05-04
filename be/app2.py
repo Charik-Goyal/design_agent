@@ -222,18 +222,26 @@ async def start_interview(payload: StartRequest):
     session = sessions[user_id]
     stage_name = session.current_stage_name()
     # If the problem JSON has an introductory description of the problem, include that in the first prompt
-    intro_text = None
-    for intro_key in ("Introduction", "Problem Statement", "Context"):
-        if intro_key in session.problem_data:
-            intro_section = session.problem_data[intro_key]
-            # If stored as list of paragraphs, join them; otherwise take as string
-            if isinstance(intro_section.get("content"), list):
-                intro_text = " ".join(intro_section["content"])
-            elif intro_section.get("content"):
-                intro_text = str(intro_section["content"])
-            # Use only the first matching intro section
-            if intro_text:
-                break
+    intro_prompt = (
+        "You are a helpful assistant that summarizes the following"
+        "conversation in a few sentences so we can make a good start of the interview."
+        "You need to summarize the problem in a way like you are a system design interviewer."
+    )
+    # Pull the stored conversation text
+    intro_text = session.problem_data.get("Understanding the Problem", {}).get("content", "")
+    intro_text = "".join(intro_text)
+
+    if intro_text:
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": intro_prompt},
+                {"role": "user",   "content": intro_text},
+            ],
+            temperature=0.5,
+            max_tokens=1500,
+        )
+        intro_text = completion.choices[0].message.content.strip()
     # Construct the initial assistant message
     if intro_text:
         assistant_msg = (
@@ -284,7 +292,6 @@ def interact(user_input: UserInput):
     except OpenAIError as err:
         print("OpenAI error:", err)
         raise HTTPException(status_code=500, detail=f"AI generation failed: {str(err)}")
-    print("completion",completion)
     ai_reply = completion.choices[0].message.content.strip()
     # Save the assistant's response in the history
     session.history.append({"role": "assistant", "content": ai_reply})
@@ -326,4 +333,5 @@ def interact(user_input: UserInput):
                 {"role": "assistant", "content": f"**Summary so far:** {summary}"}
             ]
     print(session.current_stage_name())
+    print("ai_reply",ai_reply)
     return {"reply": ai_reply, "nextStage": session.current_stage_name()}
