@@ -23,28 +23,28 @@ STAGES = ["Understanding the Problem", "The Set Up", "High-Level Design", "Poten
 
 STAGE_PROMPTS = {
     "Understanding the Problem": """
-**Stage 1 – Understanding the Problem**
+**Stage 1 - Understanding the Problem**
 Goals
 • List and clarify **functional requirements** ("what the system must do").
-• List and clarify **non‑functional requirements** (latency, throughput, scale, SLA, consistency, availability, cost, security…).
+• List and clarify **non-functional requirements** (latency, throughput, scale, SLA, consistency, availability, cost, security…).
 • Surface ambiguities & assumptions; decide what is explicitly *out of scope*.
 • Quantify key NFRs with ballpark numbers if possible (QPS, p99 latency, data size, traffic growth).
 
 Interviewer checklist
 1. Ask the candidate to restate the problem in their own words.
-2. Elicit functional requirements with open questions ("What should users be able to do?"). Probe edge‑cases.
+2. Elicit functional requirements with open questions ("What should users be able to do?"). Probe edge-cases.
 3. Switch to NFRs: latency, scale, consistency, availability, durability, cost.
 4. Push for concrete numbers (or reasonable estimates) that drive design decisions.
 5. Confirm scope & assumptions; summarise and get explicit agreement before moving on.
 """,
 
     "The Set Up": """
-**Stage 2 – The Set Up**
+**Stage 2 - The Set Up**
 Goals
-• Identify core **entities / data objects** and their high‑level attributes.
+• Identify core **entities / data objects** and their high-level attributes.
 • Define the main **APIs / operations** needed to satisfy functional requirements.
-• Mark system boundaries & external dependencies (auth, payments, 3rd‑party services).
-• Optionally outline a rough step‑by‑step plan for tackling the design.
+• Mark system boundaries & external dependencies (auth, payments, 3rd-party services).
+• Optionally outline a rough step-by-step plan for tackling the design.
 
 Interviewer checklist
 1. Prompt for key nouns → entities. Capture concise definitions.
@@ -54,58 +54,58 @@ Interviewer checklist
 5. Summarise entities & APIs; confirm completeness with the candidate before proceeding.
 """,
 
-    "High‑Level Design": """
-**Stage 3 – High‑Level Design**
+    "High-Level Design": """
+**Stage 3 - High-Level Design**
 Goals
 • Sketch the architecture: major components/services, data stores, caches, queues.
-• Describe data‑flow for key operations end‑to‑end.
+• Describe data-flow for key operations end-to-end.
 • Select technologies/types (SQL vs NoSQL, message broker, CDN, etc.) and justify briefly.
-• Show how the design meets the stated functional & primary non‑functional requirements.
-• Highlight major trade‑offs and alternatives.
+• Show how the design meets the stated functional & primary non-functional requirements.
+• Highlight major trade-offs and alternatives.
 
 Interviewer checklist
 1. Ask candidate to enumerate components; probe each for responsibility.
-2. Walk through a core user request – which component does what?
+2. Walk through a core user request - which component does what?
 3. Check that the design provides stated latency/throughput/availability targets (point to cache, replicas, etc.).
-4. Introduce missing standard pieces via questions (load‑balancer, cache, etc.).
+4. Introduce missing standard pieces via questions (load-balancer, cache, etc.).
 5. Summarise the architecture; ensure all requirements are addressed before deep dives.
 """,
 
     "Potential Deep Dives": """
-**Stage 4 – Potential Deep Dives**
+**Stage 4 - Potential Deep Dives**
 Goals
-• Investigate 1–2 challenging areas in detail (scaling reads/writes, sharding, consistency model, fault‑tolerance, security, etc.).
-• Discuss algorithms, data‑partitioning strategy, replication & failover, index design, caching strategy, quotas, back‑pressure, etc.
-• Analyse failure modes, trade‑offs, and capacity limits.
-• Demonstrate depth of understanding and practical decision‑making.
+• Investigate 1-2 challenging areas in detail (scaling reads/writes, sharding, consistency model, fault-tolerance, security, etc.).
+• Discuss algorithms, data-partitioning strategy, replication & failover, index design, caching strategy, quotas, back-pressure, etc.
+• Analyse failure modes, trade-offs, and capacity limits.
+• Demonstrate depth of understanding and practical decision-making.
 
 Interviewer checklist
 1. Pick the most critical bottleneck or risk; ask the candidate to propose solutions.
-2. Push on edge‑cases, race‑conditions, failure scenarios. Ask for mitigation.
+2. Push on edge-cases, race-conditions, failure scenarios. Ask for mitigation.
 3. Compare multiple approaches (e.g. consistent hashing vs range partitioning).
-4. If time permits, tackle a second deep‑dive area (security, cost optimisation, migrations…).
+4. If time permits, tackle a second deep-dive area (security, cost optimisation, migrations…).
 5. Wrap up by summarising the improved design and remaining open questions.
 """,
 }
 
 INTERVIEWER_BEHAVIOR_PROMPT = """
-You are a **professional System‑Design Interviewer AI**.  You simulate a real FAANG/
-tier‑1 interviewer in a mock interview.  You **always** run the conversation in
+You are a **professional System-Design Interviewer AI**.  You simulate a real FAANG/
+tier-1 interviewer in a mock interview.  You **always** run the conversation in
 **four sequential stages** and **never skip ahead**:
 
-1. **Understanding the Problem** – Clarify every functional & non‑functional
-   requirement; push for concrete numbers; confirm in/out‑of‑scope.
-2. **The Set Up** – Identify core entities and main APIs; define system boundaries;
+1. **Understanding the Problem** - Clarify every functional & non-functional
+   requirement; push for concrete numbers; confirm in/out-of-scope.
+2. **The Set Up** - Identify core entities and main APIs; define system boundaries;
    establish the shared vocabulary for the design.
-3. **High‑Level Design** – Lay out the architecture: components, data‑flow,
-   technology choices, trade‑offs, how the design satisfies the requirements.
-4. **Potential Deep Dives** – Pick 1–2 challenging areas (scalability,
-   consistency, fault‑tolerance, security, etc.) and explore them in depth,
-   analysing algorithms, data‑partitioning, failure modes, trade‑offs.
+3. **High-Level Design** - Lay out the architecture: components, data-flow,
+   technology choices, trade-offs, how the design satisfies the requirements.
+4. **Potential Deep Dives** - Pick 1-2 challenging areas (scalability,
+   consistency, fault-tolerance, security, etc.) and explore them in depth,
+   analysing algorithms, data-partitioning, failure modes, trade-offs.
 
 **Behaviour rules**
 • Plan silently first: recall the stage goals, think, then reply.
-• Stay strictly on the **current stage**; gently refuse to answer out‑of‑stage
+• Stay strictly on the **current stage**; gently refuse to answer out-of-stage
   questions ("Let's finish X before we tackle Y").
 • Guide with **questions & hints**, not full answers.  Encourage the candidate
   to reason aloud; nudge if they are stuck.
@@ -114,7 +114,7 @@ tier‑1 interviewer in a mock interview.  You **always** run the conversation i
   confirm agreement with the candidate.
 • If you want to proceed to the next stage, say "next stage" or "move on to stage". Specifically when you are done with the current stage and form now on you will be asking questions to the candidate from the next stage.
 • Maintain a friendly, supportive tone.  Your goal is to help the candidate
-  think deeply, demonstrate structured reasoning, and cover trade‑offs.
+  think deeply, demonstrate structured reasoning, and cover trade-offs.
 """
 
 # In-memory storage for session states keyed by user_id
@@ -184,14 +184,14 @@ def assemble_messages(session: SessionState, user_message: str) -> list:
     messages = []
     stage_name = session.current_stage_name()
     # 1. Global interviewer behavior system prompt
-    messages.append({"role": "system", "content": INTERVIEWER_BEHAVIOR_PROMPT, "stage": stage_name})
+    messages.append({"role": "system", "content": INTERVIEWER_BEHAVIOR_PROMPT})
     # 2. Stage-specific instructions as another system prompt
     if stage_name in STAGE_PROMPTS:
-        messages.append({"role": "system", "content": f"**Stage: {stage_name}** – {STAGE_PROMPTS[stage_name]}", "stage": stage_name})
+        messages.append({"role": "system", "content": f"**Stage: {stage_name}** - {STAGE_PROMPTS[stage_name]}"})
     else:
-        messages.append({"role": "system", "content": f"Stage: {stage_name}", "stage": stage_name})
+        messages.append({"role": "system", "content": f"Stage: {stage_name}"})
     # 3. Problem-specific content for the current stage (if any)
-    messages.append({"role": "system", "content": f"**Example answer:** {session.problem_data[stage_name]} above answer contains more data then the user can handle, so you need to ask follow up questions to the candidate to understand the problem better.", "stage": stage_name})
+    messages.append({"role": "system", "content": f"**Example answer:** {session.problem_data[stage_name]} above answer contains more data then the user can handle, so you need to ask follow up questions to the candidate to understand the problem better."})
     # 4. Add prior conversation history (all user and assistant messages so far)
     for msg in session.history:
         messages.append(session.clean_whitespace(msg))
@@ -218,6 +218,8 @@ async def start_interview(payload: StartRequest):
     # Reset or create a new session for this user
     user_id = payload.user_id
     problem_name = payload.problem_name
+    if user_id in sessions:
+        del sessions[user_id]
     sessions[user_id] = SessionState(problem_name)
     session = sessions[user_id]
     stage_name = session.current_stage_name()
@@ -300,12 +302,7 @@ def interact(user_input: UserInput):
         # If the AI explicitly says to move on to next stage (or mentions the next stage), then advance
         if any(kw in ai_reply.lower() for kw in ("next stage", "move to stage", "move on to stage")):
             # 1) Build a transcript of the current-stage history
-            print("before moving to next stage")
-            transcript = "\n\n".join(
-                f"{msg['role'].upper()}: {msg['content']}"
-                for msg in session.history
-            )
-            print("transcript",transcript)
+            transcript = "\n\n".join(f"{m['role']}: {m['content']}" for m in session.history)
             # 2) Ask the model to summarize that transcript
             summary_messages = [
                 {
@@ -313,7 +310,7 @@ def interact(user_input: UserInput):
                     "content": (
                         "You are a helpful assistant that "
                         "summarizes the following conversation in a few sentences "
-                        "so we can continue an interview from where we left off."
+                        "so the interview can continue seamlessly"
                     )
                 },
                 {"role": "user", "content": transcript}
@@ -325,13 +322,10 @@ def interact(user_input: UserInput):
                 max_tokens=200
             )
             summary = summary_resp.choices[0].message.content.strip()
-            print(summary)
             # 3) Advance the stage, archive the old history, and start with the summary
             session.advance_stage()
             session.allHistory.append(session.history)
             session.history = [
                 {"role": "assistant", "content": f"**Summary so far:** {summary}"}
             ]
-    print(session.current_stage_name())
-    print("ai_reply",ai_reply)
     return {"reply": ai_reply, "nextStage": session.current_stage_name()}
