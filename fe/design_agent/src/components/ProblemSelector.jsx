@@ -22,11 +22,13 @@ export default function ProblemSelector({ onStart }) {
   ];
   const [selected, setSelected] = useState(problems[0].value);
   const [loading, setLoading] = useState(false);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
 
   const handleStart = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/start", {
+      const res = await fetch(`${API_BASE}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -45,6 +45,7 @@ export default function ChatBox({
     }
     return () => clearInterval(id);
   }, [loading]);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const sendMessage = async () => {
     const text = committed + (interim ? ` ${interim}` : "");
@@ -61,7 +62,7 @@ export default function ChatBox({
           message: text,
           graph: processData(elements),
         };
-        const res = await fetch("http://localhost:8000/interact", {
+        const res = await fetch(`${API_BASE}/interact`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify(payload),
