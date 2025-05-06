@@ -8,6 +8,7 @@ import os, re
 from openai import OpenAI, OpenAIError
 from textwrap import dedent
 from dotenv import load_dotenv
+from fastapi.responses import PlainTextResponse
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -212,6 +213,10 @@ class StartRequest(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+@app.head("/")
+async def health_check():
+    return PlainTextResponse(status_code=200)
 
 @app.post("/start")
 async def start_interview(payload: StartRequest):
