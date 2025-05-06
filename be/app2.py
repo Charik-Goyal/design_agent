@@ -209,6 +209,10 @@ class StartRequest(BaseModel):
     user_id: str
     problem_name: str
 
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
 @app.post("/start")
 async def start_interview(payload: StartRequest):
     """
